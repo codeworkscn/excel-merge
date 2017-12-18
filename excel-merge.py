@@ -129,6 +129,14 @@ class ExcelSplit(CommandExecutor):
                 print "find no valid column value for row, row=%s" % row
         
         """
+        create folder if not exist
+        """
+        if not os.path.exists(self.outputpath):
+            print "output folder not exists, will create it"
+            os.makedirs(self.outputpath)
+            print "create output folder done, output folder =%s" % self.outputpath
+            
+        """
         save all sub workbooks
         """
         for key in self.splitedWorkBooks:
