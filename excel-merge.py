@@ -157,14 +157,78 @@ class ExcelMerge(CommandExecutor):
         self.inputpath = inputpath
         self.outputname = outputname
         self.mergecolumn = mergecolumn
+        self.allworksheets = []
     
-    def __read_files_from_inputpath(self):
+    def __list_filenames_from_inputpath(self):
         filenames = os.listdir(self.inputpath)
-        return filenames
+        return map(lambda filename: os.path.join(self.inputpath,filename), filenames)
         
+    def __get_first_row_from_worksheet(self, worksheet):
+        first_row = []
+        for row in worksheet.iter_rows(min_row=1, max_row=1):
+            for cell in row:
+                first_row.append(cell.value)
+        return first_row
+    
+    def __get_data_rows_from_worksheet(self, worksheet):
+        data_rows = []
+        for row in worksheet.iter_rows(min_row=2):
+            data_row = []
+            for cell in row:
+                data_row.append(cell.value)
+            data_rows.append(data_row)
+        return data_rows
+        
+    def __check_title_row_match(self):
+        all_first_rows = []
+        for worksheet in self.allworksheets:
+            all_first_rows.append(self.__get_first_row_from_worksheet(worksheet))
+        
+        for index in range(len(all_first_rows) - 1):
+            if all_first_rows[index] <> all_first_rows[index + 1]:
+                print "find title row not match:"
+                print "title row %d: %s" % (index, all_first_rows[index])
+                print "title row %d: %s" % (index + 1, all_first_rows[index + 1])
+                raise Exception("title row not match")     
+        print "check title row match done, all rows matches"
+
     def execute(self):
         print "ExcelMerge execute start"
+                
+        """
+        read all files from input path
+        """
+        filepathnames = self.__list_filenames_from_inputpath()
+        if 0 == len(filepathnames):
+            raise Exception("find no file in input path %s" % self.inputpath)
         
+        for filepathname in filepathnames:
+            print "find file from inputpath, filepathname=%s" % filepathname
+            workbook = load_workbook(filepathname)
+            worksheet = workbook.active
+            self.allworksheets.append(worksheet)  
+
+        """
+        check if all title row are equals
+        """
+        self.__check_title_row_match()
+        
+        """
+        merge and save to file
+        """
+        title_row = self.__get_first_row_from_worksheet(self.allworksheets[0])
+        wb = Workbook()
+        ws = wb.active
+        ws.append(title_row)
+        print "create title row done, title_row=%s" % title_row
+
+        for worksheet in self.allworksheets:        
+            data_rows = self.__get_data_rows_from_worksheet(worksheet)
+            for data_row in data_rows:
+                ws.append(data_row)
+            print "add one worksheet to merged worksheet done, added row count=%d" % len(data_rows)
+        
+        wb.save(self.outputname)
         
         print "ExcelMerge execute done"
 
@@ -207,7 +271,7 @@ def main(argv=None):
             continue
     if mode == "split":
         commandExecutor = ExcelSplit(input, output, column) 
-    elif mode == merge:
+    elif mode == "merge":
         commandExecutor = ExcelMerge(input, output, column)  
     
     commandExecutor.execute()
