@@ -273,6 +273,8 @@ def main(argv=None):
         commandExecutor = ExcelSplit(input, output, column) 
     elif mode == "merge":
         commandExecutor = ExcelMerge(input, output, column)  
+    else:
+        raise Exception("mode not supported, given mode=%s" % mode)
     
     commandExecutor.execute()
 
